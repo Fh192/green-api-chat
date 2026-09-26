@@ -1,6 +1,6 @@
 # GREEN-API Chat
 
-[![CI](https://github.com/Fh192/green-api-telegram-chat/actions/workflows/ci.yml/badge.svg)](https://github.com/Fh192/green-api-telegram-chat/actions/workflows/ci.yml)
+[![CI](https://github.com/Fh192/green-api-chat/actions/workflows/ci.yml/badge.svg)](https://github.com/Fh192/green-api-chat/actions/workflows/ci.yml)
 
 Веб-чат в стиле [web.telegram.org](https://web.telegram.org/) для отправки и получения текстовых сообщений через [GREEN-API](https://green-api.com/telegram).
 
@@ -16,7 +16,7 @@ pnpm dev
 Откройте http://localhost:5173 и введите данные инстанса из [личного кабинета GREEN-API](https://console.green-api.com):
 
 - `idInstance` и `apiTokenInstance`;
-- `apiUrl`: подставляется автоматически по первым четырём цифрам `idInstance`. Сверьте с кабинетом: у части инстансов другой хост, например `api.greenapi.com`.
+- `apiUrl`: подставляется автоматически по первым четырём цифрам `idInstance`.
 
 ### Подготовка инстанса
 
@@ -29,23 +29,23 @@ pnpm dev
 
 ### По ТЗ
 
-| Требование                                | Реализация                                                                                                                      |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Вход по `idInstance` и `apiTokenInstance` | форма входа, проверка через `GetStateInstance` и `GetSettings`                                                                  |
-| Новый чат по номеру телефона              | `CheckAccount` проверяет, что у номера есть аккаунт, и возвращает `chatId`                                                      |
-| Отправка текста                           | [`SendMessage`](https://green-api.com/v3/docs/api/sending/SendMessage/)                                                         |
-| Получение ответов                         | [HTTP API](https://green-api.com/v3/docs/api/receiving/technology-http-api/): цикл `ReceiveNotification` → `DeleteNotification` |
-| Интерфейс как у web.telegram.org          | тёмная тема, список чатов, пузыри сообщений, разделители дат                                                                    |
-| React, shadcn, React Hook Form + zod      | все формы на RHF + zod, компоненты shadcn (Base UI)                                                                             |
+| Требование                                | Реализация                                                                                                                                                                                                                                                                                                     |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Вход по `idInstance` и `apiTokenInstance` | форма входа, проверка через [`GetStateInstance`](https://green-api.com/v3/docs/api/account/GetStateInstance/) и [`GetSettings`](https://green-api.com/v3/docs/api/account/GetSettings/)                                                                                                                        |
+| Новый чат по номеру телефона              | [`CheckAccount`](https://green-api.com/v3/docs/api/service/CheckAccount/) проверяет, что у номера есть аккаунт, и возвращает `chatId`                                                                                                                                                                          |
+| Отправка текста                           | [`SendMessage`](https://green-api.com/v3/docs/api/sending/SendMessage/)                                                                                                                                                                                                                                        |
+| Получение ответов                         | [HTTP API](https://green-api.com/v3/docs/api/receiving/technology-http-api/): цикл [`ReceiveNotification`](https://green-api.com/v3/docs/api/receiving/technology-http-api/ReceiveNotification/) → [`DeleteNotification`](https://green-api.com/v3/docs/api/receiving/technology-http-api/DeleteNotification/) |
+| Интерфейс как у web.telegram.org          | тёмная тема, список чатов, пузыри сообщений, разделители дат                                                                                                                                                                                                                                                   |
+| React, shadcn, React Hook Form + zod      | все формы на RHF + zod, компоненты shadcn (Base UI)                                                                                                                                                                                                                                                            |
 
 В ТЗ упоминаются и Telegram, и MAX. У GREEN-API для них одинаковый формат запросов, поэтому чат поддерживает оба, а заодно WhatsApp. Мессенджер выбирается при входе, по умолчанию Telegram. Различия (метод проверки номера, формат `chatId`, лимит длины сообщения) спрятаны в адаптерах [`messengers.ts`](src/lib/green-api/messengers.ts).
 
 ### Дополнительно
 
-- Список чатов из `GetChats` с превью последних сообщений (журналы `LastIncomingMessages` и `LastOutgoingMessages`) и сортировкой по активности. Каналы скрыты.
-- История переписки через `GetChatHistory`, карточка собеседника через `GetContactInfo`.
+- Список чатов из [`GetChats`](https://green-api.com/v3/docs/api/service/GetChats/) с превью последних сообщений (журналы [`LastIncomingMessages`](https://green-api.com/v3/docs/api/journals/LastIncomingMessages/) и [`LastOutgoingMessages`](https://green-api.com/v3/docs/api/journals/LastOutgoingMessages/)) и сортировкой по активности. Каналы скрыты.
+- История переписки через [`GetChatHistory`](https://green-api.com/v3/docs/api/journals/GetChatHistory/), карточка собеседника через [`GetContactInfo`](https://green-api.com/v3/docs/api/service/GetContactInfo/).
 - Статусы сообщений: отправляется, отправлено, прочитано, ошибка. Неотправленное сообщение можно переотправить.
-- Счётчики непрочитанных, отметка прочтения через `ReadChat`.
+- Счётчики непрочитанных, отметка прочтения через [`ReadChat`](https://green-api.com/v3/docs/api/marks/ReadChat/).
 - Пометки для пересланных, изменённых и удалённых сообщений.
 - Поиск собеседника по `@username` (Telegram).
 - Открытый чат хранится в URL (`#chatId`), работают «назад» и «вперёд» браузера.
@@ -62,26 +62,7 @@ pnpm dev
 | `pnpm test`     | unit- и компонентные тесты (Vitest + Testing Library + msw) |
 | `pnpm test:e2e` | e2e-тесты (Playwright, desktop и Pixel 7)                   |
 
-Тесты не ходят в настоящий GREEN-API. Unit- и e2e-тесты используют общий in-memory фейк [`fake-green-api.ts`](src/test/fake-green-api.ts) с теми же URL и форматами ответов. Перед первым запуском e2e установите браузер: `pnpm exec playwright install chromium`.
-
-## Docker
-
-Сборка вынесена в [`Dockerfile`](Dockerfile) и идёт в два этапа: `pnpm build` на Node 22, затем статика раздаётся через nginx от непривилегированного пользователя.
-
-```bash
-docker build -t green-api-chat .
-docker run --rm -p 8080:8080 green-api-chat
-```
-
-Приложение будет доступно на http://localhost:8080. Заголовки безопасности для nginx генерируются при сборке образа из `vercel.json` ([`docker/nginx-headers.mjs`](docker/nginx-headers.mjs)). В итоге у Vercel, `vite preview` и контейнера одна и та же CSP.
-
-## CI и деплой
-
-- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) запускается на каждый push в `main` и на каждый PR.
-  - `checks`: линт, проверка типов, unit-тесты.
-  - `docker-e2e`: собирает Docker-образ, запускает контейнер, проверяет заголовки nginx и прогоняет Playwright против контейнера. Если тесты упали, их трассировки прикладываются к запуску.
-- **Деплой на Vercel** идёт через Git-интеграцию: `main` выкатывается в продакшен, каждый PR получает превью. Vercel не запускает Docker и собирает проект сам по [`vercel.json`](vercel.json).
-- Локально `pnpm test:e2e` поднимает `vite preview` с теми же заголовками. Чтобы прогнать тесты против уже запущенного сервера, например контейнера, задайте `E2E_BASE_URL=http://localhost:8080`. Любое нарушение CSP в консоли браузера валит тест.
+Тесты не ходят в настоящий GREEN-API. Unit- и e2e-тесты используют общий in-memory фейк [`fake-green-api.ts`](src/test/fake-green-api.ts) с теми же URL и форматами ответов.
 
 ## Архитектура
 
@@ -97,11 +78,9 @@ src/
 
 - **Данные** хранятся в кэше TanStack Query. Уведомления и оптимистичная отправка обновляют кэш напрямую (`message-cache.ts`), без повторных запросов.
 - **Лимиты.** У многих методов GREEN-API лимит 1 запрос в секунду. Запросы не отменяются по AbortSignal, потому что отменённый запрос всё равно засчитывается сервером. Повторы идут только на 429, 5xx и сетевые ошибки.
-- **Цикл уведомлений.** Long polling на 20 секунд. `DeleteNotification` вызывается для любого уведомления, иначе очередь застрянет. Цикл возвращается после сетевых ошибок с нарастающей паузой.
+- **Цикл уведомлений.** Long polling на 20 секунд. [`DeleteNotification`](https://green-api.com/v3/docs/api/receiving/technology-http-api/DeleteNotification/) вызывается для любого уведомления, иначе очередь застрянет. Цикл возвращается после сетевых ошибок с нарастающей паузой.
 
 ## Ограничения
 
-- `apiTokenInstance` хранится в `localStorage`: у приложения нет бэкенда. React экранирует весь выводимый текст, а `apiUrl` принимается только по https.
 - Отправляются и отображаются только текстовые сообщения, остальные типы пропускаются.
 - Для Telegram и MAX API не сообщает, прочитано ли сообщение. Поэтому после перезагрузки счётчики непрочитанных восстанавливаются только для WhatsApp.
-- Основной JS-бандл около 600 КБ (190 КБ gzip). Почти весь объём приходится на `react-dom`, `@base-ui/react` и `zod`. Экран чатов загружается отдельным чанком.
