@@ -1,75 +1,86 @@
-# React + TypeScript + Vite
+# GREEN-API Chat
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Веб-чат в стиле [web.telegram.org](https://web.telegram.org/) для отправки и получения текстовых сообщений через [GREEN-API](https://green-api.com/telegram).
 
-Currently, two official plugins are available:
+![Демо: вход → новый чат → отправка → ответ из Telegram](docs/demo.gif)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Быстрый старт
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+pnpm install
+pnpm dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Откройте http://localhost:5173 и введите данные инстанса из [личного кабинета GREEN-API](https://console.green-api.com):
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- `idInstance` и `apiTokenInstance`;
+- `apiUrl`: подставляется автоматически по первым четырём цифрам `idInstance`. Сверьте с кабинетом: у части инстансов другой хост, например `api.greenapi.com`.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Подготовка инстанса
+
+1. Инстанс должен быть **авторизован**: статус `authorized` в кабинете.
+2. Для получения сообщений через HTTP API поле **webhookUrl должно быть пустым**, а уведомления о входящих сообщениях включены.
+
+Если инстанс настроен не так, после входа появится предупреждение с кнопкой **«Исправить автоматически»**. Она вызывает `SetSettings`: инстанс перезапустится, изменения применяются до 5 минут.
+
+## Что сделано
+
+### По ТЗ
+
+| Требование                                | Реализация                                                                                                                      |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Вход по `idInstance` и `apiTokenInstance` | форма входа, проверка через `GetStateInstance` и `GetSettings`                                                                  |
+| Новый чат по номеру телефона              | `CheckAccount` проверяет, что у номера есть аккаунт, и возвращает `chatId`                                                      |
+| Отправка текста                           | [`SendMessage`](https://green-api.com/v3/docs/api/sending/SendMessage/)                                                         |
+| Получение ответов                         | [HTTP API](https://green-api.com/v3/docs/api/receiving/technology-http-api/): цикл `ReceiveNotification` → `DeleteNotification` |
+| Интерфейс как у web.telegram.org          | тёмная тема, список чатов, пузыри сообщений, разделители дат                                                                    |
+| React, shadcn, React Hook Form + zod      | все формы на RHF + zod, компоненты shadcn (Base UI)                                                                             |
+
+В ТЗ упоминаются и Telegram, и MAX. У GREEN-API для них одинаковый формат запросов, поэтому чат поддерживает оба, а заодно WhatsApp. Мессенджер выбирается при входе, по умолчанию Telegram. Различия (метод проверки номера, формат `chatId`, лимит длины сообщения) спрятаны в адаптерах [`messengers.ts`](src/lib/green-api/messengers.ts).
+
+### Дополнительно
+
+- Список чатов из `GetChats` с превью последних сообщений (журналы `LastIncomingMessages` и `LastOutgoingMessages`) и сортировкой по активности. Каналы скрыты.
+- История переписки через `GetChatHistory`, карточка собеседника через `GetContactInfo`.
+- Статусы сообщений: отправляется, отправлено, прочитано, ошибка. Неотправленное сообщение можно переотправить.
+- Счётчики непрочитанных, отметка прочтения через `ReadChat`.
+- Пометки для пересланных, изменённых и удалённых сообщений.
+- Поиск собеседника по `@username` (Telegram).
+- Открытый чат хранится в URL (`#chatId`), работают «назад» и «вперёд» браузера.
+- Несколько вкладок: уведомления опрашивает одна вкладка и пересылает события остальным.
+- Сессия сохраняется в `localStorage`, есть выход. Вёрстка адаптирована под мобильные.
+
+## Скрипты
+
+| Команда         | Что делает                                                  |
+| --------------- | ----------------------------------------------------------- |
+| `pnpm dev`      | dev-сервер                                                  |
+| `pnpm build`    | проверка типов и production-сборка                          |
+| `pnpm lint`     | ESLint                                                      |
+| `pnpm test`     | unit- и компонентные тесты (Vitest + Testing Library + msw) |
+| `pnpm test:e2e` | e2e-тесты (Playwright, desktop и Pixel 7)                   |
+
+Тесты не ходят в настоящий GREEN-API. Unit- и e2e-тесты используют общий in-memory фейк [`fake-green-api.ts`](src/test/fake-green-api.ts) с теми же URL и форматами ответов. Перед первым запуском e2e установите браузер: `pnpm exec playwright install chromium`.
+
+## Архитектура
 
 ```
+src/
+  lib/green-api/     транспорт: клиент, zod-схемы ответов, адаптеры мессенджеров, разбор уведомлений
+  features/auth/     вход и проверка инстанса
+  features/session/  сессия (учётные данные, клиент) и ключи TanStack Query
+  features/chats/    список чатов, новый чат, цикл уведомлений, синхронизация с URL
+  features/chat/     окно чата: история, отправка, кэш сообщений
+  components/ui/     компоненты shadcn
+```
+
+- **Данные** хранятся в кэше TanStack Query. Уведомления и оптимистичная отправка обновляют кэш напрямую (`message-cache.ts`), без повторных запросов.
+- **Лимиты.** У многих методов GREEN-API лимит 1 запрос в секунду. Запросы не отменяются по AbortSignal, потому что отменённый запрос всё равно засчитывается сервером. Повторы идут только на 429, 5xx и сетевые ошибки.
+- **Цикл уведомлений.** Long polling на 20 секунд. `DeleteNotification` вызывается для любого уведомления, иначе очередь застрянет. Цикл возвращается после сетевых ошибок с нарастающей паузой.
+
+## Ограничения
+
+- `apiTokenInstance` хранится в `localStorage`: у приложения нет бэкенда. React экранирует весь выводимый текст, а `apiUrl` принимается только по https.
+- Отправляются и отображаются только текстовые сообщения, остальные типы пропускаются.
+- Для Telegram и MAX API не сообщает, прочитано ли сообщение. Поэтому после перезагрузки счётчики непрочитанных восстанавливаются только для WhatsApp.
+- Основной JS-бандл около 600 КБ (190 КБ gzip). Почти весь объём приходится на `react-dom`, `@base-ui/react` и `zod`. Экран чатов загружается отдельным чанком.
