@@ -20,7 +20,6 @@ describe("chat", () => {
 
   beforeEach(() => {
     api = mockGreenApi()
-    api.receiveWaitMs = 50
     api.addContact(IVAN)
     api.addContact(MARIA)
     api.addHistory(IVAN.chatId, { type: "incoming", timestamp: 1_700_000_000, textMessage: "Привет!", senderName: IVAN.name })

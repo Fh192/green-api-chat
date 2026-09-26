@@ -22,7 +22,6 @@ export async function routeGreenApi(page: Page, api: FakeGreenApi) {
 export const test = base.extend<{ api: FakeGreenApi; cspGuard: void }>({
   api: async ({ page }, provide) => {
     const api = new FakeGreenApi()
-    api.receiveWaitMs = 500
     await routeGreenApi(page, api)
     await provide(api)
   },

@@ -63,8 +63,13 @@ export class FakeGreenApi {
   readChatCalls: { chatId: string; idMessage?: string }[] = []
   /** When set, sendMessage answers with this HTTP status. */
   sendMessageError: number | null = null
-  /** How long an empty receiveNotification waits, ms (real API: receiveTimeout seconds). */
-  receiveWaitMs = 300
+  /**
+   * How long an empty receiveNotification waits, ms (real API: receiveTimeout seconds).
+   * A pushed notification wakes the waiting poll at once, so a long wait costs nothing.
+   * Keep it above the poller's MIN_EMPTY_POLL_MS: faster empty answers look like a server
+   * that doesn't long-poll, and the poller backs off for seconds — which made tests flaky.
+   */
+  receiveWaitMs = 2000
 
   private queue: { receiptId: number; body: Record<string, unknown> }[] = []
   private waiters = new Set<() => void>()
