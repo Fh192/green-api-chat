@@ -64,11 +64,24 @@ pnpm dev
 
 Тесты не ходят в настоящий GREEN-API. Unit- и e2e-тесты используют общий in-memory фейк [`fake-green-api.ts`](src/test/fake-green-api.ts) с теми же URL и форматами ответов. Перед первым запуском e2e установите браузер: `pnpm exec playwright install chromium`.
 
+## Docker
+
+Сборка вынесена в [`Dockerfile`](Dockerfile) и идёт в два этапа: `pnpm build` на Node 22, затем статика раздаётся через nginx от непривилегированного пользователя.
+
+```bash
+docker build -t green-api-chat .
+docker run --rm -p 8080:8080 green-api-chat
+```
+
+Приложение будет доступно на http://localhost:8080. Заголовки безопасности для nginx генерируются при сборке образа из `vercel.json` ([`docker/nginx-headers.mjs`](docker/nginx-headers.mjs)). В итоге у Vercel, `vite preview` и контейнера одна и та же CSP.
+
 ## CI и деплой
 
-- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) запускается на каждый push в `main` и на каждый PR. Задача `checks` прогоняет линт, проверку типов, unit-тесты и сборку. Задача `e2e` прогоняет Playwright; если тесты упали, их трассировки прикладываются к запуску.
-- **Деплой на Vercel** идёт через Git-интеграцию: `main` выкатывается в продакшен, каждый PR получает превью. Настройки сборки и заголовки безопасности (CSP, `nosniff` и др.) лежат в [`vercel.json`](vercel.json).
-- `vite preview` отдаёт те же заголовки, что и Vercel, поэтому e2e-тесты идут под продовой CSP. Любое её нарушение в консоли браузера валит тест.
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) запускается на каждый push в `main` и на каждый PR.
+  - `checks`: линт, проверка типов, unit-тесты.
+  - `docker-e2e`: собирает Docker-образ, запускает контейнер, проверяет заголовки nginx и прогоняет Playwright против контейнера. Если тесты упали, их трассировки прикладываются к запуску.
+- **Деплой на Vercel** идёт через Git-интеграцию: `main` выкатывается в продакшен, каждый PR получает превью. Vercel не запускает Docker и собирает проект сам по [`vercel.json`](vercel.json).
+- Локально `pnpm test:e2e` поднимает `vite preview` с теми же заголовками. Чтобы прогнать тесты против уже запущенного сервера, например контейнера, задайте `E2E_BASE_URL=http://localhost:8080`. Любое нарушение CSP в консоли браузера валит тест.
 
 ## Архитектура
 

@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   checks:
-    name: Lint, typecheck, unit tests, build
+    name: Lint, typecheck, unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -30,14 +30,45 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm build
 
-  e2e:
-    name: E2E (Playwright)
+  docker-e2e:
+    name: Docker build + E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    env:
+      IMAGE: green-api-chat:ci
+      APP_URL: http://localhost:4173
     steps:
       - uses: actions/checkout@v5
+
+      # The production build happens inside the Dockerfile.
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ${{ env.IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start container
+        run: |
+          docker run -d --name app -p 4173:8080 "$IMAGE"
+          for i in $(seq 1 30); do curl -fsS "$APP_URL/" > /dev/null && exit 0; sleep 1; done
+          docker logs app
+          exit 1
+
+      - name: Smoke test nginx headers
+        run: |
+          curl -fsSI "$APP_URL/" | tee index-headers.txt
+          grep -qi '^content-security-policy: .*green-api\.com' index-headers.txt
+          grep -qi '^cache-control: no-cache' index-headers.txt
+          asset=$(curl -fsS "$APP_URL/" | grep -o '/assets/[^"]*\.js' | head -n 1)
+          curl -fsSI "$APP_URL$asset" | tee asset-headers.txt
+          grep -qi '^cache-control: public, max-age=31536000, immutable' asset-headers.txt
+          grep -qi '^content-security-policy:' asset-headers.txt
+
+      # E2E run against the container: the production build served by nginx.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
         with:
@@ -45,8 +76,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      # Builds the app and runs it with `vite preview` under the production CSP.
       - run: pnpm test:e2e
+        env:
+          E2E_BASE_URL: ${{ env.APP_URL }}
+
       - name: Upload traces of failed tests
         if: failure()
         uses: actions/upload-artifact@v4
@@ -54,3 +87,6 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 7
+      - name: Container logs
+        if: failure()
+        run: docker logs app
