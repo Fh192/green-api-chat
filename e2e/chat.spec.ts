@@ -122,3 +122,11 @@ test("two tabs: one polls, both see incoming messages", async ({ page, api, cont
   // Only the tab holding the lock polls; the other one gets events relayed.
   expect(secondTabPolls).toBe(0)
 })
+
+test("serves the production security headers", async ({ page }) => {
+  const response = await page.goto("/")
+  const headers = response!.headers()
+
+  expect(headers["content-security-policy"]).toContain("connect-src 'self' https://*.green-api.com")
+  expect(headers["x-content-type-options"]).toBe("nosniff")
+})

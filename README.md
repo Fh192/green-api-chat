@@ -1,5 +1,7 @@
 # GREEN-API Chat
 
+[![CI](https://github.com/Fh192/green-api-telegram-chat/actions/workflows/ci.yml/badge.svg)](https://github.com/Fh192/green-api-telegram-chat/actions/workflows/ci.yml)
+
 Веб-чат в стиле [web.telegram.org](https://web.telegram.org/) для отправки и получения текстовых сообщений через [GREEN-API](https://green-api.com/telegram).
 
 ![Демо: вход → новый чат → отправка → ответ из Telegram](docs/demo.gif)
@@ -61,6 +63,12 @@ pnpm dev
 | `pnpm test:e2e` | e2e-тесты (Playwright, desktop и Pixel 7)                   |
 
 Тесты не ходят в настоящий GREEN-API. Unit- и e2e-тесты используют общий in-memory фейк [`fake-green-api.ts`](src/test/fake-green-api.ts) с теми же URL и форматами ответов. Перед первым запуском e2e установите браузер: `pnpm exec playwright install chromium`.
+
+## CI и деплой
+
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) запускается на каждый push в `main` и на каждый PR. Задача `checks` прогоняет линт, проверку типов, unit-тесты и сборку. Задача `e2e` прогоняет Playwright; если тесты упали, их трассировки прикладываются к запуску.
+- **Деплой на Vercel** идёт через Git-интеграцию: `main` выкатывается в продакшен, каждый PR получает превью. Настройки сборки и заголовки безопасности (CSP, `nosniff` и др.) лежат в [`vercel.json`](vercel.json).
+- `vite preview` отдаёт те же заголовки, что и Vercel, поэтому e2e-тесты идут под продовой CSP. Любое её нарушение в консоли браузера валит тест.
 
 ## Архитектура
 

@@ -1,4 +1,4 @@
-import { test as base, type Page } from "@playwright/test"
+import { expect, test as base, type Page } from "@playwright/test"
 
 import { FAKE_CREDENTIALS, FakeGreenApi } from "../src/test/fake-green-api.ts"
 
@@ -19,13 +19,31 @@ export async function routeGreenApi(page: Page, api: FakeGreenApi) {
   })
 }
 
-export const test = base.extend<{ api: FakeGreenApi }>({
+export const test = base.extend<{ api: FakeGreenApi; cspGuard: void }>({
   api: async ({ page }, provide) => {
     const api = new FakeGreenApi()
     api.receiveWaitMs = 500
     await routeGreenApi(page, api)
     await provide(api)
   },
+  // The preview server sends the production CSP (see vite.config.ts); any violation
+  // in any tab of any test means the policy would break the deployed app.
+  cspGuard: [
+    async ({ context }, provide) => {
+      const violations: string[] = []
+      const watch = (page: Page) =>
+        page.on("console", (message) => {
+          if (message.type() === "error" && /Content Security Policy/i.test(message.text())) {
+            violations.push(message.text())
+          }
+        })
+      context.pages().forEach(watch)
+      context.on("page", watch)
+      await provide()
+      expect(violations, "CSP violations").toEqual([])
+    },
+    { auto: true },
+  ],
 })
 
 export async function login(page: Page) {
